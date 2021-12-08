@@ -54,19 +54,11 @@ defmodule Fish do
                 a = Map.get(map, 0)
                 b = Map.get(new_map, 6)
 
-                new_map = Map.put(new_map, 8, a) 
-                cond do
-                    a == nil && b == nil ->
-                        Map.put(new_map, 6, nil)
-                    a == nil && b != nil ->
-                        Map.put(new_map, 6, b)
-                    a != nil && b == nil ->
-                        Map.put(new_map, 6, a)
-                    a != nil && b != nil ->
-                        Map.put(new_map, 6, a + b)
-                    true ->
-                        IO.puts("oops")
-                    end
+                a = if a == nil, do: 0, else: a
+                b = if b == nil, do: 0, else: b
+
+                new_map = Map.put(new_map, 8, a)
+                Map.put(new_map, 6, a + b)
             true ->
                 sim_day(map, Map.put(new_map, to_update - 1, Map.get(map, to_update)), to_update - 1)
         end
@@ -92,7 +84,14 @@ defmodule Fish do
 end
 
 
-
+defmodule Benchmark do
+    def measure(function) do
+      function
+      |> :timer.tc
+      |> elem(0)
+      |> Kernel./(1_000_000)
+    end
+  end
 
 
 
@@ -103,4 +102,9 @@ fish = Fish.numerize(fish)
 fish_map = Fish.map(fish, %{})
 
 IO.puts(Fish.simulate_spawning(fish, [], 1))
-IO.puts(Fish.better_simulate_spawning(fish_map, 0, 256))
+
+{time, ans} = :timer.tc(fn -> Fish.better_simulate_spawning(fish_map, 0, 256) end)
+IO.puts("answer:")
+IO.puts(ans)
+IO.puts("ran in:")
+IO.puts(time)
