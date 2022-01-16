@@ -1,33 +1,30 @@
 
 defmodule Parser do
 
-    def parse_chunks([head | tail], score) do
+    def parse_chunks([head | tail], score, good_list) do
         {good, illegal_char, _rest} = scan_line(head, "")
         if good do
-            parse_chunks(tail, score)
+            parse_chunks(tail, score, [head | good_list])
         else
             #IO.puts(illegal_char)
-            parse_chunks(tail, score + score(illegal_char))
+            parse_chunks(tail, score + score_bad(illegal_char), good_list)
         end
     end
 
-    def parse_chunks([], score) do
-        score
+    def parse_chunks([], score, good_list) do
+        {score, good_list}
     end
     
-    def complete_chunks([head | tail], score) do
-        {good, illegal_char, _rest} = scan_line(head, "")
-        if good do
-            score += complete_line(head, "", 0)
-            complete_chunks(tail, score)
-        else
-            #IO.puts(illegal_char)
-            complete_chunks(tail, score)
-        end
+    def complete_chunks([head | tail], scores) do
+        {score, _rest, _closed} = complete_line(head, 0)
+        complete_chunks(tail, [score | scores])
     end
 
-    def complete_chunks([], score) do
-        score
+    def complete_chunks([], scores) do
+        scores = Enum.sort(scores)
+        len = length(scores)
+        mid = div(len, 2)
+        Enum.at(scores, mid)
     end
 
     def scan_line(line, chunk_start) do
@@ -76,7 +73,7 @@ defmodule Parser do
         end
     end
 
-    def score(char) do
+    def score_bad(char) do
         case char do
             ")" ->
                 3
@@ -91,57 +88,41 @@ defmodule Parser do
         end
     end
 
-    def complete_line(line, chunk_start, score) do
+    def complete_line(line, score) do
         if line == nil do
-            {score, nil}
+            {0, [], false}
         else
             {char, rest} = String.split_at(line, 1)
 
             case char do
                 n when n in ["(", "[", "{", "<"] ->
-                    {score, rest} = complete_line(rest, char, score)
-                    if good do 
-                        scan_line(rest, chunk_start)
+                    {score, rest, closed} = complete_line(rest, score)
+                    if closed do
+                        complete_line(rest, score)
                     else
-                        {good, illegal_char, rest}
+                        score = score_good(char, score)
+                        {score, rest, closed}
                     end
-                ")" ->
-                    if chunk_start == "(" do
-                        {true, nil, rest}
-                    else
-                        {false, char, nil}
-                    end
-                "]" ->
-                    if chunk_start == "[" do
-                        {true, nil, rest}
-                    else
-                        {false, char, nil}
-                    end  
-                "}" ->
-                    if chunk_start == "{" do
-                        {true, nil, rest}
-                    else
-                        {false, char, nil}
-                    end
-                ">" ->
-                    if chunk_start == "<" do
-                        {true, nil, rest}
-                    else
-                        {false, char, nil}
-                    end
-                "" ->
-                    case chunk_start do
-                        "(" ->
-                            score * 5 + 1
-                        "[" ->
-                            score * 5 + 2
-                        "{" ->
-                            score * 5 + 3
-                        "<" ->
-                            score * 5 + 4
+                n when n in [")", "]", "}", ">"] ->
+                    {0, rest, true}  
                 _ ->
-                    IO.puts("oopsies")
+                    {0, [], false}
             end
+        end
+    end
+
+    def score_good(char, score) do
+        case char do
+            "(" ->
+                score * 5 + 1
+            "[" ->
+                score * 5 + 2
+            "{" ->
+                score * 5 + 3
+            "<" ->
+                score * 5 + 4
+            true ->
+                IO.puts("bad char in score")
         end
     end
 
@@ -157,5 +138,7 @@ end
 {:ok, data} = File.read("inputs/Day10.txt")
 data = String.replace(data,"\r", "")
 data = String.split(data, "\n")
+{score, good} = Parser.parse_chunks(data, 0, [])
+IO.puts(score)
 
-IO.puts(Parser.parse_chunks(data, 0))
+IO.puts(Parser.complete_chunks(good, []))
